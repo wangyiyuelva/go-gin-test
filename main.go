@@ -1,15 +1,38 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
-	r := gin.Default()
-	r.Static("/assets", "./assets")
+	router := gin.Default()
+	router.Static("/assets", "./assets")
+	router.LoadHTMLGlob("templates/*")
+	router.MaxMultipartMemory = 8 << 20 // 8 MiB
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{})
+	})
+
+	router.POST("/", func(c *gin.Context) {
+		file, err := c.FormFile("video")
+		// Get the file
+		if err != nil {
+			c.HTML(http.StatusOK, "index.html", gin.H{
+				"error": "fail to upload video.",
+			})
+			return
+		}
+		// Save the file
+		err = c.SaveUploadedFile(file, "assets/uploads/"+file.Filename)
+
+		// Render the page
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"video": "/assets/uploads/" + file.Filename,
 		})
 	})
-	r.Run() // listen and serve on 0.0.0.0:8080
+
+	router.Run() // listen and serve on 0.0.0.0:8080
 }
